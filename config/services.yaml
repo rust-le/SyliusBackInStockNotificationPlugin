@@ -16,6 +16,7 @@ services:
         arguments:
             - '@sylius.context.channel.cached'
             - '@translator'
+            - '@validator'
             - '@sylius.context.customer'
             - '@sylius.availability_checker.default'
             - '@sylius.repository.product_variant'
@@ -36,7 +37,7 @@ services:
     Webgriffe\SyliusBackInStockNotificationPlugin\Twig\AvailabilityExtension:
         tags:
             - { name: twig.extension }
-        
+    
     Webgriffe\SyliusBackInStockNotificationPlugin\Twig\AvailabilityRuntime:
         arguments:
             - '@sylius.availability_checker.default'

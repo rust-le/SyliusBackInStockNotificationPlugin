@@ -8,9 +8,9 @@ if (!interface_exists(\Sylius\Resource\Factory\FactoryInterface::class)) {
     class_alias(\Sylius\Component\Resource\Factory\FactoryInterface::class, \Sylius\Resource\Factory\FactoryInterface::class);
 }
 use DateTime;
+use Sylius\Component\Core\Repository\CustomerRepositoryInterface;
 use Sylius\Component\Channel\Context\ChannelContextInterface;
 use Sylius\Component\Core\Model\ProductVariantInterface;
-use Sylius\Component\Core\Repository\CustomerRepositoryInterface;
 use Sylius\Component\Core\Repository\ProductVariantRepositoryInterface;
 use Sylius\Component\Customer\Context\CustomerContextInterface;
 use Sylius\Component\Inventory\Checker\AvailabilityCheckerInterface;
@@ -19,6 +19,9 @@ use Sylius\Component\Mailer\Sender\SenderInterface;
 use Sylius\Resource\Factory\FactoryInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\Validator\Constraints\Email;
+use Symfony\Component\Validator\Constraints\NotBlank;
+use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Contracts\Translation\TranslatorInterface;
 use Webgriffe\SyliusBackInStockNotificationPlugin\Entity\SubscriptionInterface;
@@ -34,6 +37,7 @@ final class SubscriptionController extends AbstractController
     public function __construct(
         private ChannelContextInterface $channelContext,
         private TranslatorInterface $translator,
+        private ValidatorInterface $validator,
         private CustomerContextInterface $customerContext,
         private AvailabilityCheckerInterface $availabilityChecker,
         private ProductVariantRepositoryInterface $productVariantRepository,
@@ -74,10 +78,9 @@ final class SubscriptionController extends AbstractController
         if ($form->isSubmitted() && $form->isValid()) {
             /** @var array{email?: string, product_variant_code: string} $data */
             $data = $form->getData();
-
             $subscription = $this->createSubscriptionFromData($data);
-            $this->backInStockNotificationRepository->add($subscription);
 
+            $this->backInStockNotificationRepository->add($subscription);
             $this->addFlash(
                 'success',
                 $this->translator->trans('webgriffe_bisn.form_submission.subscription_successfully'),
@@ -125,26 +128,78 @@ final class SubscriptionController extends AbstractController
         $email = null;
         $subscription = $this->backInStockNotificationFactory->createNew();
         if (array_key_exists('email', $data)) {
-            $email = $data['email'];
-        }
-        if ($customer !== null) {
+            $email = (string) $data['email'];
+            $errors = $this->validator->validate($email, [new Email(), new NotBlank()]);
+            if (count($errors) > 0) {
+                $this->addFlash('error', $this->translator->trans('webgriffe_bisn.form_submission.invalid_email', ['email' => $email]));
+
+                return $this->redirect($this->getRefererUrl($request));
+            }
+            $customer = $this->customerRepository->findOneBy(['email' => $email]);
+            if (!is_null($customer)) {
+                $subscription->setCustomer($customer);
+            }
+            $subscription->setEmail($email);
+        } elseif (null !== $customer) {
             $email = $customer->getEmail();
+            if ($email !== null) {
+                $subscription->setCustomer($customer);
+                $subscription->setEmail($email);
+            } else {
+                $this->addFlash('error', $this->translator->trans('webgriffe_bisn.form_submission.invalid_form'));
+
+                return $this->redirect($this->getRefererUrl($request));
+            }
+        } else {
+            $this->addFlash('error', $this->translator->trans('webgriffe_bisn.form_submission.invalid_form'));
+
+            return $this->redirect($this->getRefererUrl($request));
         }
+
         Assert::stringNotEmpty($email);
         $subscription->setEmail($email);
         $subscription->setCustomer($customer);
 
-        $productVariantCode = $data['product_variant_code'];
-        $productVariant = $this->productVariantRepository->findOneBy(['code' => $productVariantCode]);
-        Assert::isInstanceOf($productVariant, ProductVariantInterface::class);
-        Assert::false($this->availabilityChecker->isStockAvailable($productVariant), 'Product variant is in stock');
-        $subscription->setProductVariant($productVariant);
+        /** @var ProductVariantInterface|null $variant */
+        $variant = $this->productVariantRepository->findOneBy(['code' => $data['product_variant_code']]);
+        if (null === $variant) {
+            $this->addFlash('error', $this->translator->trans('webgriffe_bisn.form_submission.variant_not_found'));
 
-        $subscription->setChannel($this->channelContext->getChannel());
+            return $this->redirect($this->getRefererUrl($request));
+        }
+
+        if ($this->availabilityChecker->isStockAvailable($variant) && $variant->isAvailable()) {
+            $this->addFlash('error', $this->translator->trans('webgriffe_bisn.form_submission.variant_not_oos'));
+
+            return $this->redirect($this->getRefererUrl($request));
+        }
+        $subscription->setProductVariant($variant);
+
+        $subscriptionSaved = $this->backInStockNotificationRepository->findOneBy(
+            [
+                'email' => $subscription->getEmail(),
+                'productVariant' => $subscription->getProductVariant(),
+            ],
+        );
+        if ($subscriptionSaved !== null) {
+            $this->addFlash(
+                'error',
+                $this->translator->trans(
+                    'webgriffe_bisn.form_submission.already_saved',
+                    ['email' => $subscription->getEmail(),
+                        'variant' => $variant->getCode(),]
+                )
+            );
+
+            return $this->redirect($this->getRefererUrl($request));
+        }
+
+
+
         $subscription->setLocaleCode($this->localeContext->getLocaleCode());
-        $now = new DateTime();
-        $subscription->setCreatedAt($now);
-        $subscription->setUpdatedAt($now);
+        $subscription->setCreatedAt(new DateTime());
+        $subscription->setUpdatedAt(new DateTime());
+        $subscription->setChannel($currentChannel);
 
         //I generate a random string to handle the delete action of the subscription using a GET
         //This way is easier and does not send sensible information
