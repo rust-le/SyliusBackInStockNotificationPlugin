@@ -121,6 +121,7 @@ final class SubscriptionController extends AbstractController
 
     /**
      * @param array{email?: string, product_variant_code: string} $data
+     * @return SubscriptionCreationResult
      */
     private function createSubscriptionFromData(array $data): SubscriptionCreationResult
     {

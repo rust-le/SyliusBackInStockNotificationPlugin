@@ -31,6 +31,7 @@ final class AlertCommand extends Command
         private SubscriptionRepositoryInterface $backInStockNotificationRepository,
         private MailerInterface $mailer,
         private EntityManagerInterface $entityManager,
+        private RouterInterface $router,
         string $name = null,
     ) {
         parent::__construct($name);
@@ -53,23 +54,22 @@ final class AlertCommand extends Command
         foreach ($subscriptions as $subscription) {
             $channel = $subscription->getChannel();
             $productVariant = $subscription->getProductVariant();
-            if (null === $productVariant || null === $channel) {
+            if ($productVariant === null || $channel === null) {
                 $this->backInStockNotificationRepository->remove($subscription);
                 $this->logger->warning(
                     'The back in stock subscription for the product does not have all the information required',
-                    ['subscription' => var_export($subscription, true)]
+                    ['subscription' => var_export($subscription, true)],
                 );
 
                 continue;
             }
-            if(!$productVariant->isEnabled() || !$productVariant->getProduct()->isEnabled()) {
-                $this->backInStockNotificationRepository->remove($subscription);
-                continue;
-            }
 
-            if ($this->availabilityChecker->isStockAvailable($productVariant)
-                && $productVariant->isAvailable()
+            if (
+                $this->availabilityChecker->isStockAvailable($productVariant) &&
+                $productVariant->isEnabled() &&
+                $productVariant->getProduct()?->isEnabled() === true
             ) {
+                $this->router->getContext()->setHost($channel->getHostname() ?? 'localhost');
                 $this->sendEmail($subscription, $productVariant, $channel);
                 $this->backInStockNotificationRepository->remove($subscription);
             }
@@ -77,7 +77,7 @@ final class AlertCommand extends Command
 
         $this->entityManager->flush();
 
-        return 0;
+        return Command::SUCCESS;
     }
 
     private function sendEmail(SubscriptionInterface $subscription, ProductVariantInterface $productVariant, ChannelInterface $channel): void
