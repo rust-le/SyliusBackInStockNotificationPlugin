@@ -48,7 +48,7 @@ final class AlertCommand extends Command
     {
         //I think that this load in the long time can be a bottle necklace
         /** @var SubscriptionInterface $subscription */
-        $subscriptions = $this->backInStockNotificationRepository->findBy(['notify' => false]);
+        $subscriptions = $this->backInStockNotificationRepository->findBy([]);
 
         foreach ($subscriptions as $subscription) {
             $channel = $subscription->getChannel();
@@ -71,8 +71,6 @@ final class AlertCommand extends Command
                 && $productVariant->isAvailable()
             ) {
                 $this->sendEmail($subscription, $productVariant, $channel);
-                /*$subscription->setNotify(true);
-                $this->entityManager->persist($subscription);*/
                 $this->backInStockNotificationRepository->remove($subscription);
             }
         }

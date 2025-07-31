@@ -64,7 +64,6 @@ final class SubscriptionUniqueValidator extends ConstraintValidator
         if ([] !== $this->subscriptionRepository->findBy([
             'email' => $email,
             'productVariant' => $productVariant,
-            'notify' => false,
         ])) {
             $this->context
                 ->buildViolation($constraint->message)
