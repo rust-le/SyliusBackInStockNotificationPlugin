@@ -3,6 +3,20 @@ services:
         autowire: true
         autoconfigure: true
     
+    Webgriffe\SyliusBackInStockNotificationPlugin\Controller\:
+        resource: ../src/Controller/
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Controller\SubscriptionController:
+        arguments:
+            $backInStockNotificationFactory: '@webgriffe.factory.back_in_stock_notification_subscription'
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Command\:
+        resource: ../src/Command/
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Repository\SubscriptionRepositoryInterface:
+        alias: webgriffe.repository.back_in_stock_notification_subscription
+        public: false
+    
     Webgriffe\SyliusBackInStockNotificationPlugin\Menu\AccountMenuListener:
         tags:
             - { name: kernel.event_listener, event: sylius.menu.shop.account, method: addMenuItems }
