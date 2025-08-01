@@ -15,7 +15,6 @@ final class SubscriptionRepository extends EntityRepository implements Subscript
             ->createQueryBuilder('subscription')
             ->andWhere('subscription.customer = :customerId')
             ->andWhere('subscription.channel = :channelId')
-            ->andWhere('subscription.notify = 0')
             ->setParameter('customerId', $customerId)
             ->setParameter('channelId', $channelId)
         ;

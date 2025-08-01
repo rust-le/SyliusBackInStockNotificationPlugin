@@ -1,30 +1,21 @@
 services:
-    Webgriffe\SyliusBackInStockNotificationPlugin\Command\AlertCommand:
-        tags: [ 'console.command' ]
-        arguments:
-            - '@monolog.logger'
-            - '@sylius.email_sender'
-            - '@sylius.availability_checker.default'
-            - '@webgriffe.repository.back_in_stock_notification_subscription'
-            - '@mailer.mailer'
-            - '@doctrine.orm.entity_manager'
+    _defaults:
+        autowire: true
+        autoconfigure: true
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Controller\:
+        resource: ../src/Controller/
     
     Webgriffe\SyliusBackInStockNotificationPlugin\Controller\SubscriptionController:
-        tags: [ 'controller.service_arguments' ]
-        calls:
-            - [ setContainer, [ '@service_container' ] ]
         arguments:
-            - '@sylius.context.channel.cached'
-            - '@translator'
-            - '@validator'
-            - '@sylius.context.customer'
-            - '@sylius.availability_checker.default'
-            - '@sylius.repository.product_variant'
-            - '@sylius.email_sender'
-            - '@sylius.context.locale'
-            - '@webgriffe.repository.back_in_stock_notification_subscription'
-            - '@webgriffe.factory.back_in_stock_notification_subscription'
-            - '@sylius.repository.customer'
+            $backInStockNotificationFactory: '@webgriffe.factory.back_in_stock_notification_subscription'
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Command\:
+        resource: ../src/Command/
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Repository\SubscriptionRepositoryInterface:
+        alias: webgriffe.repository.back_in_stock_notification_subscription
+        public: false
     
     Webgriffe\SyliusBackInStockNotificationPlugin\Menu\AccountMenuListener:
         tags:
@@ -33,3 +24,21 @@ services:
     Webgriffe\SyliusBackInStockNotificationPlugin\Menu\AdminMenuListener:
         tags:
             - { name: kernel.event_listener, event: sylius.menu.admin.main, method: addAdminMenuItems }
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Twig\AvailabilityExtension:
+        tags:
+            - { name: twig.extension }
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Twig\AvailabilityRuntime:
+        arguments:
+            - '@sylius.availability_checker.default'
+        tags:
+            - { name: twig.runtime }
+    
+    Webgriffe\SyliusBackInStockNotificationPlugin\Validator\SubscriptionUniqueValidator:
+        arguments:
+            - '@webgriffe.repository.back_in_stock_notification_subscription'
+            - '@sylius.repository.product_variant'
+            - '@sylius.context.customer'
+        tags:
+            - { name: validator.constraint_validator }

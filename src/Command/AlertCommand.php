@@ -10,6 +10,7 @@ use Sylius\Component\Channel\Model\ChannelInterface;
 use Sylius\Component\Core\Model\ProductVariantInterface;
 use Sylius\Component\Inventory\Checker\AvailabilityCheckerInterface;
 use Sylius\Component\Mailer\Sender\SenderInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -20,66 +21,58 @@ use Webgriffe\SyliusBackInStockNotificationPlugin\Entity\SubscriptionInterface;
 use Webgriffe\SyliusBackInStockNotificationPlugin\Repository\SubscriptionRepositoryInterface;
 use App\Component\Mailer\MailService;
 
+#[AsCommand(
+    name: 'webgriffe:back-in-stock-notification:alert',
+    description: 'Sends an email to users who subscribed to back-in-stock notifications when the product is available again.'
+)]
 final class AlertCommand extends Command
 {
-    protected static $defaultName = 'webgriffe:back-in-stock-notification:alert';
-
     public function __construct(
-        private LoggerInterface $logger,
-        private SenderInterface $sender,
-        private AvailabilityCheckerInterface $availabilityChecker,
-        private SubscriptionRepositoryInterface $backInStockNotificationRepository,
-        private MailerInterface $mailer,
-        private EntityManagerInterface $entityManager,
-        string $name = null,
+        private readonly LoggerInterface $logger,
+        private readonly SenderInterface $sender,
+        private readonly AvailabilityCheckerInterface $availabilityChecker,
+        private readonly SubscriptionRepositoryInterface $backInStockNotificationRepository,
+        private readonly MailerInterface $mailer,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly RouterInterface $router,
     ) {
-        parent::__construct($name);
-    }
-
-    protected function configure(): void
-    {
-        $this
-            ->setDescription('Send an email to the user if the product is returned in stock')
-            ->setHelp('Check the stock status of the products in the webgriffe_back_in_stock_notification table and send and email to the user if the product is returned in stock')
-        ;
+        parent::__construct();
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         //I think that this load in the long time can be a bottle necklace
         /** @var SubscriptionInterface $subscription */
-        $subscriptions = $this->backInStockNotificationRepository->findBy(['notify' => false]);
+        $subscriptions = $this->backInStockNotificationRepository->findBy([]);
 
         foreach ($subscriptions as $subscription) {
             $channel = $subscription->getChannel();
             $productVariant = $subscription->getProductVariant();
-            if (null === $productVariant || null === $channel) {
+            if ($productVariant === null || $channel === null) {
                 $this->backInStockNotificationRepository->remove($subscription);
                 $this->logger->warning(
                     'The back in stock subscription for the product does not have all the information required',
-                    ['subscription' => var_export($subscription, true)]
+                    ['subscription' => var_export($subscription, true)],
                 );
 
                 continue;
             }
-            if(!$productVariant->isEnabled() || !$productVariant->getProduct()->isEnabled()) {
-                $this->backInStockNotificationRepository->remove($subscription);
-                continue;
-            }
 
-            if ($this->availabilityChecker->isStockAvailable($productVariant)
-                && $productVariant->isAvailable()
+            if (
+                $this->availabilityChecker->isStockAvailable($productVariant) &&
+                $productVariant->isEnabled() &&
+                $productVariant->getProduct()?->isEnabled() === true &&
+                $productVariant->isAvailable()
             ) {
+                $this->router->getContext()->setHost($channel->getHostname() ?? 'localhost');
                 $this->sendEmail($subscription, $productVariant, $channel);
-                /*$subscription->setNotify(true);
-                $this->entityManager->persist($subscription);*/
                 $this->backInStockNotificationRepository->remove($subscription);
             }
         }
 
         $this->entityManager->flush();
 
-        return 0;
+        return Command::SUCCESS;
     }
 
     private function sendEmail(SubscriptionInterface $subscription, ProductVariantInterface $productVariant, ChannelInterface $channel): void
