@@ -20,21 +20,22 @@ use Webgriffe\SyliusBackInStockNotificationPlugin\Entity\SubscriptionInterface;
 use Webgriffe\SyliusBackInStockNotificationPlugin\Repository\SubscriptionRepositoryInterface;
 use App\Component\Mailer\MailService;
 
+#[AsCommand(
+    name: 'webgriffe:back-in-stock-notification:alert',
+    description: 'Sends an email to users who subscribed to back-in-stock notifications when the product is available again.'
+)]
 final class AlertCommand extends Command
 {
-    protected static $defaultName = 'webgriffe:back-in-stock-notification:alert';
-
     public function __construct(
-        private LoggerInterface $logger,
-        private SenderInterface $sender,
-        private AvailabilityCheckerInterface $availabilityChecker,
-        private SubscriptionRepositoryInterface $backInStockNotificationRepository,
-        private MailerInterface $mailer,
-        private EntityManagerInterface $entityManager,
-        private RouterInterface $router,
-        string $name = null,
+        private readonly LoggerInterface $logger,
+        private readonly SenderInterface $sender,
+        private readonly AvailabilityCheckerInterface $availabilityChecker,
+        private readonly SubscriptionRepositoryInterface $backInStockNotificationRepository,
+        private readonly MailerInterface $mailer,
+        private readonly EntityManagerInterface $entityManager,
+        private readonly RouterInterface $router,
     ) {
-        parent::__construct($name);
+        parent::__construct();
     }
 
     protected function configure(): void
