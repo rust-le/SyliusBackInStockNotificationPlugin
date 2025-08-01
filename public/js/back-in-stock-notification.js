@@ -57,6 +57,9 @@ document.addEventListener('DOMContentLoaded', function (event) {
 // New Version
 document.addEventListener("DOMContentLoaded", function (event) {
   function getSelectedVariantCode() {
+
+    if (!syliusVariantsStock) return null;
+
     const syliusVariantsStock = document.querySelector('#sylius-variants-stock')
     const formData = new FormData(document.querySelector('#sylius-product-adding-to-cart'))
     let productVariantCode = formData.get('sylius_add_to_cart[cartItem][variant]')
@@ -79,7 +82,7 @@ document.addEventListener("DOMContentLoaded", function (event) {
     if (selectedVariant) {
       const notifyMeBtn = document.querySelector('#trigger-notification-overlay');
       const addToCartBtn = document.querySelector('#sylius-product-adding-to-cart button[type="submit"]');
-      if (selectedVariant.dataset.available) {
+      if (selectedVariant.dataset.available === "true") {
         notifyMeBtn.style.display = 'none';
         addToCartBtn.style.display = 'block';
       } else {
