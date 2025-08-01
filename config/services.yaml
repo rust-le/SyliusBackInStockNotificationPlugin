@@ -1,31 +1,7 @@
 services:
-    Webgriffe\SyliusBackInStockNotificationPlugin\Command\AlertCommand:
-        tags: [ 'console.command' ]
-        arguments:
-            - '@monolog.logger'
-            - '@sylius.email_sender'
-            - '@sylius.availability_checker.default'
-            - '@webgriffe.repository.back_in_stock_notification_subscription'
-            - '@mailer.mailer'
-            - '@doctrine.orm.entity_manager'
-            - '@router'
-    
-    Webgriffe\SyliusBackInStockNotificationPlugin\Controller\SubscriptionController:
-        tags: [ 'controller.service_arguments' ]
-        calls:
-            - [ setContainer, [ '@service_container' ] ]
-        arguments:
-            - '@sylius.context.channel.cached'
-            - '@translator'
-            - '@validator'
-            - '@sylius.context.customer'
-            - '@sylius.availability_checker.default'
-            - '@sylius.repository.product_variant'
-            - '@sylius.email_sender'
-            - '@sylius.context.locale'
-            - '@webgriffe.repository.back_in_stock_notification_subscription'
-            - '@webgriffe.factory.back_in_stock_notification_subscription'
-            - '@sylius.repository.customer'
+    _defaults:
+        autowire: true
+        autoconfigure: true
     
     Webgriffe\SyliusBackInStockNotificationPlugin\Menu\AccountMenuListener:
         tags:
