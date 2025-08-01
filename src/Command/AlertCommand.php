@@ -68,7 +68,8 @@ final class AlertCommand extends Command
             if (
                 $this->availabilityChecker->isStockAvailable($productVariant) &&
                 $productVariant->isEnabled() &&
-                $productVariant->getProduct()?->isEnabled() === true
+                $productVariant->getProduct()?->isEnabled() === true &&
+                $productVariant->isAvailable()
             ) {
                 $this->router->getContext()->setHost($channel->getHostname() ?? 'localhost');
                 $this->sendEmail($subscription, $productVariant, $channel);
