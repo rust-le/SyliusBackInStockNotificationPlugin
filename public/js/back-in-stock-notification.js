@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", function (event) {
   function getSelectedVariantCode() {
 
+    const syliusVariantsStock = document.querySelector('#sylius-variants-stock')
     if (!syliusVariantsStock) return null;
 
-    const syliusVariantsStock = document.querySelector('#sylius-variants-stock')
     const formData = new FormData(document.querySelector('#sylius-product-adding-to-cart'))
     let productVariantCode = formData.get('sylius_add_to_cart[cartItem][variant]')
     if (!productVariantCode) {
