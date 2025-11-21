@@ -1,0 +1,16 @@
+services:
+    db:
+        image: 'mysql:8.0'
+        environment:
+            - MYSQL_ALLOW_EMPTY_PASSWORD=true
+            - MYSQL_USER=sylius
+            - MYSQL_PASSWORD=sylius
+            - MYSQL_ROOT_PASSWORD=root
+        volumes:
+            - mysql_data:/var/lib/mysql:rw
+    
+    mailpit:
+        image: 'axllent/mailpit:latest'
+
+volumes:
+    mysql_data:

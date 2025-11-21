@@ -1,9 +1,0 @@
-services:
-    db:
-        ports:
-            - 3306:3306
-
-    mailhog:
-        ports:
-            - "8025:8025"
-            - "1025:1025"
